@@ -1,0 +1,44 @@
+name: Build Smart Lazy TV (from zip)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack project
+        run: unzip -q SmartLazyTV-phase1-source.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build debug APKs
+        working-directory: SmartLazyTV
+        run: gradle :mobile-app:assembleDebug :tv-app:assembleDebug --stacktrace
+
+      - name: Collect APKs
+        working-directory: SmartLazyTV
+        run: |
+          mkdir -p output/mobile output/tv
+          cp mobile-app/build/outputs/apk/debug/mobile-app-debug.apk output/mobile/SmartLazyTV-Mobile.apk
+          cp tv-app/build/outputs/apk/debug/tv-app-debug.apk output/tv/SmartLazyTV-TV.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SmartLazyTV-APKs
+          path: SmartLazyTV/output/
+
+      - name: Unit tests (shared-core)
+        if: always()
+        working-directory: SmartLazyTV
+        run: gradle :shared-core:testDebugUnitTest --stacktrace
